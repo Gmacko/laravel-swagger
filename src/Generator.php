@@ -24,11 +24,21 @@ class Generator
 
     protected $action;
 
+    protected $uriRewrited;
+
+    protected $tags;
+
+    protected $basePath;
+
+
     public function __construct($config, $routeFilter = null)
     {
         $this->config = $config;
         $this->routeFilter = $routeFilter;
         $this->docParser = DocBlockFactory::createInstance();
+        $this->tags = $config['tags'];
+        asort($this->tags);
+        $this->basePath = preg_quote($config['basePath'],'/');
     }
 
     public function generate()
@@ -37,7 +47,10 @@ class Generator
 
         foreach ($this->getAppRoutes() as $route) {
             $this->originalUri = $uri = $this->getRouteUri($route);
+
             $this->uri = strip_optional_char($uri);
+
+            $this->uriRewrited = ($this->config['excludeBasePath']) ? preg_replace("/{$this->basePath}/", '', $this->uri) : $this->uri;
 
             if ($this->routeFilter && !preg_match('/^' . preg_quote($this->routeFilter, '/') . '/', $this->uri)) {
                 continue;
@@ -46,8 +59,8 @@ class Generator
             $this->action = $route->getAction()['uses'];
             $methods = $route->methods();
 
-            if (!isset($this->docs['paths'][$this->uri])) {
-                $this->docs['paths'][$this->uri] = [];
+            if (!isset($this->docs['paths'][$this->uriRewrited])) {
+                $this->docs['paths'][$this->uriRewrited] = [];
             }
 
             foreach ($methods as $method) {
@@ -87,6 +100,10 @@ class Generator
             $baseInfo['produces'] = $this->config['produces'];
         }
 
+        if(!empty($this->tags)){
+            $baseInfo['tags'] = array_values($this->tags);
+        }
+
         $baseInfo['paths'] = [];
 
         return $baseInfo;
@@ -115,7 +132,7 @@ class Generator
 
         list($isDeprecated, $summary, $description) = $this->parseActionDocBlock($docBlock);
 
-        $this->docs['paths'][$this->uri][$this->method] = [
+        $doc = [
             'summary' => $summary,
             'description' => $description,
             'deprecated' => $isDeprecated,
@@ -125,6 +142,12 @@ class Generator
                 ]
             ],
         ];
+
+        if($tags = $this->shouldBeTagged()){
+            $doc['tags'] = $tags;
+        }
+
+        $this->docs['paths'][$this->uriRewrited][$this->method] = $doc;
 
         $this->addActionParameters();
     }
@@ -142,7 +165,7 @@ class Generator
         }
 
         if (!empty($parameters)) {
-            $this->docs['paths'][$this->uri][$this->method]['parameters'] = $parameters;
+            $this->docs['paths'][$this->uriRewrited][$this->method]['parameters'] = $parameters;
         }
     }
 
@@ -172,6 +195,29 @@ class Generator
                 return new Parameters\QueryParameterGenerator($rules);
         }
     }
+
+    /**
+     * Determine if the current uri should be tagged
+     *
+     * @return array|false
+     */
+    protected function shouldBeTagged(){
+
+        foreach($this->tags as $tagKey => $tag){
+
+            $tagKeySerialized = preg_replace('/\//', '\/' , preg_quote($tagKey));
+
+            if(preg_match("/^({$tagKeySerialized})(\/)?(.*)?/", $this->uri)){
+                return [$tag['name']];
+            }
+
+        }
+
+        return false;
+
+    }
+
+
 
     private function getActionClassInstance(string $action)
     {

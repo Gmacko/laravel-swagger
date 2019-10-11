@@ -62,4 +62,44 @@ return [
     */
 
     'parseDocBlock' => true,
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAGS
+    |--------------------------------------------------------------------------
+    |
+    | Configure your swagger tags here, you must pass in the key the complete uri
+    | of your route. And in values the tags parameters
+    |
+    */
+
+    'tags' => [
+        // '/api/users/{user}/' => [
+            // 'name' => "users",
+            // 'description' => "All endpoints to control users",
+            // 'externalDocs' => [
+                // 'description' => "",
+                // 'url' => ""
+            // ]
+        // ]   
+    ],
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Exclude basePath
+    |--------------------------------------------------------------------------
+    |
+    | If you want to show only the endpoint of your uri unless the basePath
+    | Set this option to true.
+    | Example : basePath = 'example.com/api'
+    | Your uri : '/api/users/{user}'
+    | In generate file : '/users/{user}'
+    |
+    */
+
+    'excludeBasePath' => true
+
+
+
 ];
